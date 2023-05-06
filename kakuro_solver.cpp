@@ -241,7 +241,7 @@ vector<sum> get_sums(int** matrix, int m, int n) {
 }
 
 bool sum_is_a_smaller(const sum& a, const sum& b) {
-	return a.hint < b.hint;
+	return a.hint > b.hint;
 }
 
 inline int set_sum_array_and_sum(const sum& s, int** sol_mat) {
@@ -273,6 +273,7 @@ inline bool sum_has_no_unfiled(const sum& S) {
 	return true;
 }
 
+// inputs are small so this is faster tahn a set or a hash table 
 inline bool sum_has_no_duplicate(const sum& s) {
 	bool has_duplicate = false;
 
@@ -300,6 +301,7 @@ inline bool is_sum_valid(const sum& s, int** sol_mat) {
 
 
 inline bool is_all_sums_valid(const vector<sum>& sums, int** sol_mat) {
+	
 	for (int i = 0; i < sums.size(); i++) {
 		if (!is_sum_valid(sums[i], sol_mat)) {
 			return false;
@@ -310,7 +312,7 @@ inline bool is_all_sums_valid(const vector<sum>& sums, int** sol_mat) {
 
 inline tuple<COORD, int > get_cor(const vector<sum>& sums, int** sol_mat) {
 	for (int ss = 0; ss < sums.size(); ss++) {
-		auto s = sums.at(ss);
+		sum s = sums.at(ss);
 		if (!is_sum_valid(s, sol_mat)) {
 			for (short i = 0; i < s.length; i++) {
 				if (s.arr[i] == -2) {
@@ -387,9 +389,11 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 			}
 		}
 		else {
-			if (i < 10) {
+			if (i < 10 ) {
 				sol_mat[next_cord.first][next_cord.second] = i;
 				i++;
+				
+
 
 				// Save the current state and push it back to the stack
 				callStack.push(make_tuple(next_cord, sums_index, i));
@@ -416,7 +420,7 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, int& m, int& n) {
 	bool found = false;
 	int num_of_remaining_threads = omp_get_max_threads();
-	int ** global_sol_mat ;
+	
 	// max 100 threds can ben inpruved
 	#pragma omp parallel for num_threads(num_of_remaining_threads) shared(mat, sol_mat, sums, m, n, found) collapse(2)
 	for (int i = 1; i < 10; i++) {
@@ -445,8 +449,7 @@ bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, i
 						found = true;
 						for (int k = 0; k < m; k++) {
 							memcpy(sol_mat[k], local_sol_mat[k], n * sizeof(int));
-						}
-						global_sol_mat = deep_copy(local_sol_mat, m, n);
+						}						
 					}
 				}
 
@@ -457,11 +460,7 @@ bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, i
 			}
 		}
 	}
-	sol_mat = deep_copy( global_sol_mat, m, n);
-	for (int k = 0; k < m; k++) {
-		delete[] global_sol_mat[k];
-	}
-	delete[] global_sol_mat;
+	
 	return found;
 }
 
@@ -500,14 +499,14 @@ bool solution(int** mat, int** sol_mat, vector<sum> sums, int m, int n) {
 	cout << "solution_multi_thread_solver execution time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << "micro seconds" << endl;
 	cout << "solution got: " << got << endl;
 	print_one_matrix(sol_copy,m,n);
-
+	/*
 	print_one_matrix(sol_mat, m, n );
 	start = chrono::high_resolution_clock::now();
 	got = solution_single_thread_solver(mat, sol_mat, sums, m, n) ;
 	end = chrono::high_resolution_clock::now();
 	cout << "solution_single_thread_solver execution time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << "micro seconds" << endl;
 	cout << "solution got: " << got << endl;
-
+	*/
 	
 	return got;
 
