@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <numeric>
 #include <tuple>
+#include <stack>
 #include <set>
 #include <omp.h>
 
@@ -345,41 +346,89 @@ void deep_delete(int**& mat, const int& m, const int& n) {
 }
 
 bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, int& m, int& n) {
+	stack<tuple<COORD, int, int>> callStack; // stack to store the state of each call
 
+	// Initial state
 	tuple<COORD, int> tmp = get_cor(sums, sol_mat);
-
 	COORD next_cord = get<0>(tmp);
 	int sums_index = get<1>(tmp);
-	bool ret = false;
+	int i = 1;
 
+	callStack.push(make_tuple(next_cord, sums_index, i));
 
-	if (sums_index == -1) {
-		if (is_all_sums_valid(sums, sol_mat)) {
-			return true;
-		}
-	}
-	else {
+	while (!callStack.empty()) {
+		tie(next_cord, sums_index, i) = callStack.top();
+		callStack.pop();
 
-		for (int i = 1; i < 10; i++) {
-			sol_mat[next_cord.first][next_cord.second] = i;
-			if (solution_single_thread_solver(mat, sol_mat, sums, m, n)) {
-				print_one_matrix(sol_mat, m, n);
+		if (sums_index == -1) {
+			if (is_all_sums_valid(sums, sol_mat)) {
 				return true;
 			}
-			sol_mat[next_cord.first][next_cord.second] = -2; // Reset the cell to its initial value when backtracking
+		}
+		else {
+			if (i < 10) {
+				sol_mat[next_cord.first][next_cord.second] = i;
+				i++;
+
+				// Save the current state and push it back to the stack
+				callStack.push(make_tuple(next_cord, sums_index, i));
+
+				// Move on to the next state
+				tmp = get_cor(sums, sol_mat);
+				next_cord = get<0>(tmp);
+				sums_index = get<1>(tmp);
+				i = 1;
+				callStack.push(make_tuple(next_cord, sums_index, i));
+			}
+			else {
+				// Reset the cell to its initial value when backtracking
+				sol_mat[next_cord.first][next_cord.second] = -2;
+			}
 		}
 	}
-	//print_one_matrix(sol_mat, m, n);
-	//cout << "no solution" << endl;
-	return false;
 
+	return false;
 }
 
 int num_of_remaining_threads = omp_get_max_threads();
 
 
 bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, int& m, int& n) {
-	
+	bool found = false;
+	int num_of_remaining_threads = omp_get_max_threads();
+
+#pragma omp parallel for num_threads(num_of_remaining_threads) shared(mat, sol_mat, sums, m, n, found) collapse(2)
+	for (int i = 1; i < 10; i++) {
+		for (int j = 1; j < 10; j++) {
+			if (!found) {
+				int** local_sol_mat = new int* [m];
+				for (int k = 0; k < m; k++) {
+					local_sol_mat[k] = new int[n];
+					memcpy(local_sol_mat[k], sol_mat[k], n * sizeof(int));
+				}
+
+				local_sol_mat[0][0] = i;
+				local_sol_mat[0][1] = j;
+
+				if (solution_single_thread_solver(mat, local_sol_mat, sums, m, n)) {
+#pragma omp critical
+					{
+						found = true;
+						for (int k = 0; k < m; k++) {
+							memcpy(sol_mat[k], local_sol_mat[k], n * sizeof(int));
+						}
+					}
+				}
+
+				for (int k = 0; k < m; k++) {
+					delete[] local_sol_mat[k];
+				}
+				delete[] local_sol_mat;
+			}
+		}
+	}
+
+	return found;
 }
 
 
@@ -399,7 +448,7 @@ bool solution(int** mat, int** sol_mat, vector<sum> sums, int m, int n) {
 	cout << "is valid :" << is_all_sums_valid(sums, sol_mat) << endl;
 	return false;
 	*/
-	bool got = solution_single_thread_solver(mat, sol_mat, sums, m, n);
+	bool got = solution_multi_thread_solver(mat, sol_mat, sums, m, n);
 	cout << "solution got: "<< got << endl;
 
 	return got;
