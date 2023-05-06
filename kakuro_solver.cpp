@@ -368,7 +368,7 @@ void deep_delete(int**& mat, const int& m, const int& n) {
 
 bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, int& m, int& n) {
 	stack<tuple<COORD, int, int>> callStack; // stack to store the state of each call
-
+	
 	// Initial state
 	tuple<COORD, int> tmp = get_cor(sums, sol_mat);
 	COORD next_cord = get<0>(tmp);
@@ -382,7 +382,9 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 		callStack.pop();
 
 		if (sums_index == -1) {
-			return is_all_sums_valid(sums, sol_mat);			 			
+			if (is_all_sums_valid(sums, sol_mat)) {
+				return true;
+			}
 		}
 		else {
 			if (i < 10) {
@@ -414,7 +416,7 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, int& m, int& n) {
 	bool found = false;
 	int num_of_remaining_threads = omp_get_max_threads();
-
+	int ** global_sol_mat ;
 	// max 100 threds can ben inpruved
 	#pragma omp parallel for num_threads(num_of_remaining_threads) shared(mat, sol_mat, sums, m, n, found) collapse(2)
 	for (int i = 1; i < 10; i++) {
@@ -444,6 +446,7 @@ bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, i
 						for (int k = 0; k < m; k++) {
 							memcpy(sol_mat[k], local_sol_mat[k], n * sizeof(int));
 						}
+						global_sol_mat = deep_copy(local_sol_mat, m, n);
 					}
 				}
 
@@ -454,7 +457,11 @@ bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, i
 			}
 		}
 	}
-
+	sol_mat = deep_copy( global_sol_mat, m, n);
+	for (int k = 0; k < m; k++) {
+		delete[] global_sol_mat[k];
+	}
+	delete[] global_sol_mat;
 	return found;
 }
 
@@ -476,16 +483,23 @@ bool solution(int** mat, int** sol_mat, vector<sum> sums, int m, int n) {
 	return false;
 	*/
 	// Have to deep copy the sums as well 
+	cout << "#########################" << endl;
+	print_one_matrix(sol_mat, m, n);
+	cout << "#########################" << endl;
+	print_one_matrix(mat, m, n);
+	cout << "##########################" << endl;
+
 
 
 
 	int** sol_copy = deep_copy(sol_mat, m, n);
 	vector<sum> sums_copy = deep_copy(sums);
 	auto start = chrono::high_resolution_clock::now();
-	bool got = false; // solution_multi_thread_solver(mat, sol_copy, sums_copy, m, n);	
+	bool got = solution_multi_thread_solver(mat, sol_copy, sums_copy, m, n);	
 	auto end = chrono::high_resolution_clock::now();
 	cout << "solution_multi_thread_solver execution time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << "micro seconds" << endl;
 	cout << "solution got: " << got << endl;
+	print_one_matrix(sol_copy,m,n);
 
 	print_one_matrix(sol_mat, m, n );
 	start = chrono::high_resolution_clock::now();
