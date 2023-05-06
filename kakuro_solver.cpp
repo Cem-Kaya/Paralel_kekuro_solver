@@ -392,7 +392,7 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 
 int num_of_remaining_threads = omp_get_max_threads();
 
-
+// should work ? 
 bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, int& m, int& n) {
 	bool found = false;
 	int num_of_remaining_threads = omp_get_max_threads();
