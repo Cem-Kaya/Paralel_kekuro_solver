@@ -8,6 +8,7 @@
 //#include <bits/stdc++.h>
 
 #include <chrono>
+#include <cstring>
 #include <algorithm>
 #include <numeric>
 #include <tuple>
@@ -327,6 +328,26 @@ inline tuple<COORD, int > get_cor(const vector<sum>& sums, int** sol_mat) {
 	return tuple < COORD, int>(COORD(-1, -1), -1);
 }
 
+
+sum  deep_copy(const sum& s) {
+	sum ret = sum(s);
+	ret.length = s.length; 
+	ret.arr = new int[ret.length];
+	for (int i = 0; i < ret.length; i++) {
+		ret.arr[i] = s.arr[i];
+	}
+	return ret;
+}
+
+vector<sum> deep_copy(const vector<sum>& sums) {
+	vector<sum> ret;
+	for (int i = 0; i < sums.size(); i++) {
+		ret.push_back(deep_copy(sums[i]));
+	}
+	return ret;
+}
+
+
 int** deep_copy(int**& mat, const int& m, const int& n) {
 	int** ret = new int* [m];
 	for (int i = 0; i < m; i++) {
@@ -361,9 +382,7 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 		callStack.pop();
 
 		if (sums_index == -1) {
-			if (is_all_sums_valid(sums, sol_mat)) {
-				return true;
-			}
+			return is_all_sums_valid(sums, sol_mat);			 			
 		}
 		else {
 			if (i < 10) {
@@ -390,13 +409,13 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 	return false;
 }
 
-int num_of_remaining_threads = omp_get_max_threads();
 
 // should work ? 
 bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, int& m, int& n) {
 	bool found = false;
 	int num_of_remaining_threads = omp_get_max_threads();
 
+	// max 100 threds can ben inpruved
 	#pragma omp parallel for num_threads(num_of_remaining_threads) shared(mat, sol_mat, sums, m, n, found) collapse(2)
 	for (int i = 1; i < 10; i++) {
 		for (int j = 1; j < 10; j++) {
@@ -406,11 +425,19 @@ bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, i
 					local_sol_mat[k] = new int[n];
 					memcpy(local_sol_mat[k], sol_mat[k], n * sizeof(int));
 				}
+				vector<sum> copy_of_susm = deep_copy(sums);
 
-				local_sol_mat[0][0] = i;
-				local_sol_mat[0][1] = j;
+				// this is worng 
+				COORD startign_chagne = copy_of_susm[0].start;
+				local_sol_mat[startign_chagne.first][startign_chagne.second] = i;
+				if (copy_of_susm[0].dir == d_down) {
+					local_sol_mat[startign_chagne.first + 1][startign_chagne.second] = j;
+				}
+				else {
+					local_sol_mat[startign_chagne.first][startign_chagne.second + 1] = j;
+				}
 
-				if (solution_single_thread_solver(mat, local_sol_mat, sums, m, n)) {
+				if (solution_single_thread_solver(mat, local_sol_mat, copy_of_susm, m, n)) {
 				#pragma omp critical
 					{
 						found = true;
@@ -448,9 +475,26 @@ bool solution(int** mat, int** sol_mat, vector<sum> sums, int m, int n) {
 	cout << "is valid :" << is_all_sums_valid(sums, sol_mat) << endl;
 	return false;
 	*/
-	bool got = solution_multi_thread_solver(mat, sol_mat, sums, m, n);
+	// Have to deep copy the sums as well 
+
+
+
+	int** sol_copy = deep_copy(sol_mat, m, n);
+	vector<sum> sums_copy = deep_copy(sums);
+	auto start = chrono::high_resolution_clock::now();
+	bool got = false; // solution_multi_thread_solver(mat, sol_copy, sums_copy, m, n);	
+	auto end = chrono::high_resolution_clock::now();
+	cout << "solution_multi_thread_solver execution time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << "micro seconds" << endl;
 	cout << "solution got: " << got << endl;
 
+	print_one_matrix(sol_mat, m, n );
+	start = chrono::high_resolution_clock::now();
+	got = solution_single_thread_solver(mat, sol_mat, sums, m, n) ;
+	end = chrono::high_resolution_clock::now();
+	cout << "solution_single_thread_solver execution time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << "micro seconds" << endl;
+	cout << "solution got: " << got << endl;
+
+	
 	return got;
 
 }
@@ -477,10 +521,8 @@ int main(int argc, char** argv) {
 	vector<sum> sums = get_sums(mat, m, n);
 
 	// get very persice time 
-	auto start = chrono::high_resolution_clock::now();
 	solution(mat, sol_mat, sums, m, n);
-	auto end = chrono::high_resolution_clock::now();
-	cout << "execution time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << "micro seconds" << endl;
+
 	print_one_matrix(sol_mat, m, n);
 	sol_to_file(mat, sol_mat, m, n, "solution.kakuro");
 
