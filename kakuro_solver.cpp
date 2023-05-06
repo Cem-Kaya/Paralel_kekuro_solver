@@ -274,9 +274,9 @@ inline bool sum_has_no_unfiled(const sum& S) {
 
 inline bool sum_has_no_duplicate(const sum& s) {
 	bool has_duplicate = false;
-	
+
 	for (int i = 0; i < s.length - 1; ++i) {
-		for (int j = i + 1; j < s.length ; ++j) {
+		for (int j = i + 1; j < s.length; ++j) {
 			if (s.arr[i] == s.arr[j]) {
 				has_duplicate = true;
 				break;
@@ -286,13 +286,13 @@ inline bool sum_has_no_duplicate(const sum& s) {
 			break;
 		}
 	}
-	return ! has_duplicate;
+	return !has_duplicate;
 }
 
 inline bool is_sum_valid(const sum& s, int** sol_mat) {
 	if (set_sum_array_and_sum(s, sol_mat) == s.hint)
 		if (sum_has_no_unfiled(s))
-			if(sum_has_no_duplicate(s))
+			if (sum_has_no_duplicate(s))
 				return true;
 	return false;
 }
@@ -327,7 +327,7 @@ inline tuple<COORD, int > get_cor(const vector<sum>& sums, int** sol_mat) {
 	return tuple < COORD, int>(COORD(-1, -1), -1);
 }
 
-int** deep_copy( int**& mat, const int& m, const int& n) {
+int** deep_copy(int**& mat, const int& m, const int& n) {
 	int** ret = new int* [m];
 	for (int i = 0; i < m; i++) {
 		ret[i] = new int[n];
@@ -397,7 +397,7 @@ bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, i
 	bool found = false;
 	int num_of_remaining_threads = omp_get_max_threads();
 
-#pragma omp parallel for num_threads(num_of_remaining_threads) shared(mat, sol_mat, sums, m, n, found) collapse(2)
+	#pragma omp parallel for num_threads(num_of_remaining_threads) shared(mat, sol_mat, sums, m, n, found) collapse(2)
 	for (int i = 1; i < 10; i++) {
 		for (int j = 1; j < 10; j++) {
 			if (!found) {
@@ -411,7 +411,7 @@ bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, i
 				local_sol_mat[0][1] = j;
 
 				if (solution_single_thread_solver(mat, local_sol_mat, sums, m, n)) {
-#pragma omp critical
+				#pragma omp critical
 					{
 						found = true;
 						for (int k = 0; k < m; k++) {
@@ -449,7 +449,7 @@ bool solution(int** mat, int** sol_mat, vector<sum> sums, int m, int n) {
 	return false;
 	*/
 	bool got = solution_multi_thread_solver(mat, sol_mat, sums, m, n);
-	cout << "solution got: "<< got << endl;
+	cout << "solution got: " << got << endl;
 
 	return got;
 
