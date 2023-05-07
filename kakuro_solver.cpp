@@ -242,7 +242,7 @@ vector<sum> get_sums(int** matrix, int m, int n) {
 
 
 bool sum_is_a_smaller(const sum& a, const sum& b) {
-	return a.hint > b.hint;
+	return a.hint < b.hint;
 }
 
 inline int set_sum_array_and_sum(const sum& s, int** sol_mat) {
@@ -393,6 +393,7 @@ bool is_current_sum_valid(int** sol_mat, sum& current_sum) {
 
 	return partial_sum <= current_sum.hint;
 }
+
 bool contains(const sum& s, const COORD& coord) {
 	int row_start = min(s.start.first, s.end.first);
 	int row_end = max(s.start.first, s.end.first);
