@@ -420,9 +420,45 @@ void deep_delete(int**& mat, const int& m, const int& n) {
 	delete[] mat;
 }
 
+bool is_current_sum_valid(int** sol_mat, sum& current_sum) {
+	int partial_sum = 0;
+
+	for (int i = 0; i < current_sum.length; i++) {
+		int row, col;
+		if (current_sum.dir == d_down) {
+			row = current_sum.start.first + i;
+			col = current_sum.start.second;
+		}
+		else if (current_sum.dir == d_right) {
+			row = current_sum.start.first;
+			col = current_sum.start.second + i;
+		}
+		else {
+			return false; // Invalid direction, return false
+		}
+
+		int value = sol_mat[row][col];
+		if (value == -2) return true; // Unassigned cell, the sum is still valid
+		partial_sum += value;
+	}
+
+	return partial_sum <= current_sum.hint;
+}
+bool contains(const sum& s, const COORD& coord) {
+	int row_start = min(s.start.first, s.end.first);
+	int row_end = max(s.start.first, s.end.first);
+	int col_start = min(s.start.second, s.end.second);
+	int col_end = max(s.start.second, s.end.second);
+
+	return coord.first >= row_start && coord.first <= row_end && coord.second >= col_start && coord.second <= col_end;
+}
+
+
+
+
 bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, int& m, int& n) {
 	stack<tuple<COORD, int, int>> callStack; // stack to store the state of each call
-	
+
 	// Initial state
 	tuple<COORD, int> tmp = get_cor(sums, sol_mat);
 	COORD next_cord = get<0>(tmp);
@@ -434,28 +470,45 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 	while (!callStack.empty()) {
 		tie(next_cord, sums_index, i) = callStack.top();
 		callStack.pop();
-		
+
 		if (sums_index == -1) {
 			if (is_all_sums_valid(sums, sol_mat)) {
 				return true;
 			}
 		}
 		else {
-			if (i < 10 ) {
+			if (i < 10) {
 				sol_mat[next_cord.first][next_cord.second] = i;
 				i++;
-				
+
+				// Pruning condition: Check if the related sums are still valid
+				bool valid = true;
+				for (int j = 0; j < sums.size(); j++) {
+					if (contains(sums[j], next_cord)) {
+						if (!is_current_sum_valid(sol_mat, sums[j])) {
+							valid = false;
+							break;
+						}
+					}
+				}
 
 
-				// Save the current state and push it back to the stack
-				callStack.push(make_tuple(next_cord, sums_index, i));
+				if (valid) {
+					// Save the current state and push it back to the stack
+					callStack.push(make_tuple(next_cord, sums_index, i));
 
-				// Move on to the next state
-				tmp = get_cor(sums, sol_mat);
-				next_cord = get<0>(tmp);
-				sums_index = get<1>(tmp);
-				i = 1;
-				callStack.push(make_tuple(next_cord, sums_index, i));
+					// Move on to the next state
+					tmp = get_cor(sums, sol_mat);
+					next_cord = get<0>(tmp);
+					sums_index = get<1>(tmp);
+					i = 1;
+					callStack.push(make_tuple(next_cord, sums_index, i));
+				}
+				else {
+					// Reset the current cell when backtracking
+					sol_mat[next_cord.first][next_cord.second] = -2;
+					callStack.push(make_tuple(next_cord, sums_index, i));
+				}
 			}
 			else {
 				// Reset the cell to its initial value when backtracking
