@@ -240,57 +240,6 @@ vector<sum> get_sums(int** matrix, int m, int n) {
 	return sums;
 }
 
-struct my_sum {
-	COORD start;
-	COORD end;
-
-	uint_fast8_t hint;
-	int dir;
-	uint_fast8_t length;
-	vector<uint_fast8_t> vec;
-
-	void print_sum() {
-		cout << "############################" << endl;
-		cout << "Creating sum with: " << endl;
-		print_coords(start, end);
-		cout << "Hint: " << hint << endl;
-		cout << "Direction: " << dir << endl;
-		cout << "Length: " << length << endl;
-		cout << "############################" << endl;
-	}
-
-	my_sum(COORD _start, COORD _end, uint_fast8_t _hint, direction _dir) : start(_start), end(_end), hint(_hint), dir(_dir)
-	{
-		length = find_length(_start, _end, _dir);
-		vec = vector<uint_fast8_t>(length) ;
-
-#ifdef DEBUG
-		cout << "############################" << endl;
-		cout << "Creating sum with: " << endl;
-		print_coords(start, end);
-		cout << "Hint: " << hint << endl;
-		cout << "Direction: " << dir << endl;
-		cout << "Length: " << length << endl;
-		cout << "############################" << endl;
-#endif
-	}
-	my_sum(sum& s) : start(s.start), end(s.end), hint(s.hint), dir(s.dir)
-	{
-		length = find_length(s.start, s.end,(direction) s.dir);
-		vec = vector<uint_fast8_t>(length);
-		for (int i = 0; i < length; i++) {
-			vec[i] = s.arr[i];
-		}
-	}
-	//~sum(){
-	//delete arr;
-	//}
-};
-
-
-
-
-
 
 bool sum_is_a_smaller(const sum& a, const sum& b) {
 	return a.hint > b.hint;
