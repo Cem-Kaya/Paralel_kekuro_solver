@@ -414,7 +414,6 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 	COORD next_cord = get<0>(tmp);
 	int sums_index = get<1>(tmp);
 	int i = 1;
-
 	callStack.push(make_tuple(next_cord, sums_index, i));
 
 	while (!callStack.empty()) {
@@ -422,7 +421,7 @@ bool solution_single_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, 
 		callStack.pop();
 
 		if (sums_index == -1) {
-			if (is_all_sums_valid(sums, sol_mat)) {
+			if (is_all_sums_valid(sums, sol_mat)) {				
 				return true;
 			}
 		}
@@ -477,41 +476,77 @@ bool solution_multi_thread_solver(int** mat, int** sol_mat, vector<sum>& sums, i
 	int num_of_remaining_threads = omp_get_max_threads();
 	
 	// max 100 threds can ben inpruved
-	#pragma omp parallel for num_threads(num_of_remaining_threads) shared(mat, sol_mat, sums, m, n, found) collapse(2)
+	#pragma omp parallel for num_threads(num_of_remaining_threads) shared(mat, sol_mat, sums, m, n, found) collapse(3) schedule( dynamic, 1)
 	for (int i = 1; i < 10; i++) {
 		for (int j = 1; j < 10; j++) {
-			if (!found) {
-				int** local_sol_mat = new int* [m];
-				for (int k = 0; k < m; k++) {
-					local_sol_mat[k] = new int[n];
-					memcpy(local_sol_mat[k], sol_mat[k], n * sizeof(int));
-				}
-				vector<sum> copy_of_susm = deep_copy(sums);
+			for (int z = 1; z < 10; z++) {
 
-				// this is worng 
-				COORD startign_chagne = copy_of_susm[0].start;
-				local_sol_mat[startign_chagne.first][startign_chagne.second] = i;
-				if (copy_of_susm[0].dir == d_down) {
-					local_sol_mat[startign_chagne.first + 1][startign_chagne.second] = j;
-				}
-				else {
-					local_sol_mat[startign_chagne.first][startign_chagne.second + 1] = j;
-				}
-
-				if (solution_single_thread_solver(mat, local_sol_mat, copy_of_susm, m, n)) {
-				#pragma omp critical
-					{
-						found = true;
-						for (int k = 0; k < m; k++) {
-							memcpy(sol_mat[k], local_sol_mat[k], n * sizeof(int));
-						}						
+				if (!found) {
+					int** local_sol_mat = new int* [m];
+					for (int k = 0; k < m; k++) {
+						local_sol_mat[k] = new int[n];
+						memcpy(local_sol_mat[k], sol_mat[k], n * sizeof(int));
 					}
-				}
+					vector<sum> copy_of_susm = deep_copy(sums);
 
-				for (int k = 0; k < m; k++) {
-					delete[] local_sol_mat[k];
+					// this is worng 
+					COORD startign_chagne = copy_of_susm[0].start;	
+
+
+					if (copy_of_susm[0].dir == d_down) {
+						if (copy_of_susm[0].length >= 3){
+							local_sol_mat[startign_chagne.first][startign_chagne.second] = i;						
+							local_sol_mat[startign_chagne.first + 1][startign_chagne.second] = j;
+							local_sol_mat[startign_chagne.first + 2][startign_chagne.second] = z;
+						}
+						else if (copy_of_susm[0].length == 2) {
+							local_sol_mat[startign_chagne.first][startign_chagne.second] = i;
+							local_sol_mat[startign_chagne.first + 1][startign_chagne.second] = j;
+							
+						}
+						else if (copy_of_susm[0].length == 1) {
+							local_sol_mat[startign_chagne.first][startign_chagne.second] = i;
+							
+						}
+
+					}
+					else { // dir == d_right
+
+						if (copy_of_susm[0].length >= 3) {
+							local_sol_mat[startign_chagne.first][startign_chagne.second] = i;
+							local_sol_mat[startign_chagne.first ][startign_chagne.second + 1] = j;
+							local_sol_mat[startign_chagne.first ][startign_chagne.second + 2] = z;
+						}
+						else if (copy_of_susm[0].length == 2) {
+							local_sol_mat[startign_chagne.first][startign_chagne.second] = i;
+							
+							local_sol_mat[startign_chagne.first ][startign_chagne.second + 1] = j;							
+						}
+						else if (copy_of_susm[0].length == 1) {
+							local_sol_mat[startign_chagne.first][startign_chagne.second] = i;
+							
+						}
+ 
+						//local_sol_mat[startign_chagne.first][startign_chagne.second] = i;
+						//local_sol_mat[startign_chagne.first][startign_chagne.second + 1] = j;
+						//local_sol_mat[startign_chagne.first][startign_chagne.second + 2] = z;
+					}
+
+					if (solution_single_thread_solver(mat, local_sol_mat, copy_of_susm, m, n)) {
+#pragma omp critical
+						{
+							found = true;
+							for (int k = 0; k < m; k++) {
+								memcpy(sol_mat[k], local_sol_mat[k], n * sizeof(int));
+							}
+						}
+					}
+
+					for (int k = 0; k < m; k++) {
+						delete[] local_sol_mat[k];
+					}
+					delete[] local_sol_mat;
 				}
-				delete[] local_sol_mat;
 			}
 		}
 	}
@@ -528,23 +563,11 @@ bool solution(int** mat, int** sol_mat, vector<sum> sums, int m, int n) {
 	//You can use any algorithm and data type
 	//Write your solution to file in main function using sol_to_mat() after solving it	
 	sort(sums.begin(), sums.end(), sum_is_a_smaller);
-	/*
-	sol_mat[1][1] = 6; //6313
-	sol_mat[1][2] = 3;
-	sol_mat[2][1] = 1;
-	sol_mat[2][2] = 3;
-	cout << "is valid :" << is_all_sums_valid(sums, sol_mat) << endl;
-	return false;
-	*/
-	// Have to deep copy the sums as well 
-	cout << "#########################" << endl;
-	print_one_matrix(sol_mat, m, n);
-	cout << "#########################" << endl;
-	print_one_matrix(mat, m, n);
-	cout << "##########################" << endl;
+	/*for (int t = 0; t< sums.size(); t++) {
+		cout <<sums[t].length <<endl;
+	}*/
 
-
-
+	
 
 	int** sol_copy = deep_copy(sol_mat, m, n);
 	vector<sum> sums_copy = deep_copy(sums);
@@ -554,6 +577,7 @@ bool solution(int** mat, int** sol_mat, vector<sum> sums, int m, int n) {
 	cout << "solution_multi_thread_solver execution time: " << chrono::duration_cast<chrono::microseconds>(end - start).count() << "micro seconds" << endl;
 	cout << "solution got: " << got << endl;
 	print_one_matrix(sol_copy,m,n);
+	
 	/*
 	print_one_matrix(sol_mat, m, n );
 	start = chrono::high_resolution_clock::now();
